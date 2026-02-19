@@ -1,29 +1,30 @@
 package adapter
 
-// Candle is the adapter-layer representation of an OHLCV candlestick.
-// The server is responsible for converting this into the protobuf type.
-type Candle struct {
-	Exchange  string
-	Symbol    string
-	Interval  string
-	OpenTime  int64
-	Open      string
-	High      string
-	Low       string
-	Close     string
-	Volume    string
-	CloseTime int64
-	IsClosed  bool
+import (
+	"time"
+
+	"github.com/yitech/candles/model/candle"
+)
+
+// CandleHandler is invoked for each incoming live candle update.
+type CandleHandler func(*candle.Candle)
+
+// Token represents an active subscription.
+// Call Unsubscribe to stop receiving candle updates for that subscription.
+type Token interface {
+	Unsubscribe()
 }
 
-// Adapter defines the contract for exchange market-data adapters.
-// Each implementation connects to an exchange WebSocket and emits
-// Candles on the returned channel.
+// Adapter is the contract for exchange market-data connectors.
 type Adapter interface {
-	// Subscribe starts streaming candles for the given symbol and interval.
-	// The returned channel is closed when the adapter stops or Close is called.
-	Subscribe(symbol, interval string) (<-chan *Candle, error)
+	// Subscribe registers handler to receive live candle updates for
+	// symbol/interval. Returns a Token that cancels the subscription.
+	Subscribe(symbol, interval string, handler CandleHandler) (Token, error)
 
-	// Close shuts down the adapter and releases all resources.
+	// Backfill fetches historical candles for symbol/interval in [start, end].
+	// Uses the exchange REST API internally.
+	Backfill(symbol, interval string, start, end time.Time) ([]*candle.Candle, error)
+
+	// Close shuts down all active subscriptions and releases resources.
 	Close() error
 }
