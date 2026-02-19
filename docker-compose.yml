@@ -9,45 +9,42 @@ services:
       - "50051:50051"
     restart: unless-stopped
 
-  # Client 1 — Binance BTCUSDT 1m
-  client-binance:
+  # Client 1 — aggregated BTCUSDT 1m (Binance + Bybit + OKX)
+  client-btcusdt:
     build:
       context: .
       target: final
     command: ["/bin/client"]
     environment:
       SERVER_ADDR: srv:50051
-      EXCHANGE:    binance
       SYMBOL:      BTCUSDT
       INTERVAL:    1m
     depends_on:
       - srv
     restart: on-failure
 
-  # Client 2 — Bybit ETHUSDT 1m
-  client-bybit:
+  # Client 2 — aggregated ETHUSDT 1m
+  client-ethusdt:
     build:
       context: .
       target: final
     command: ["/bin/client"]
     environment:
       SERVER_ADDR: srv:50051
-      EXCHANGE:    bybit
       SYMBOL:      ETHUSDT
       INTERVAL:    1m
     depends_on:
       - srv
     restart: on-failure
 
-  # Client 3 — OKX SOLUSDT 1m
-  client-okx:
+  # Client 3 — aggregated SOLUSDT 1m
+  client-solusdt:
     build:
       context: .
       target: final
     command: ["/bin/client"]
     environment:
       SERVER_ADDR: srv:50051
-      EXCHANGE:    okx
       SYMBOL:      SOLUSDT
       INTERVAL:    1m
     depends_on:

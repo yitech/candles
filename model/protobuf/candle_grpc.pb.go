@@ -26,10 +26,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// CandleService streams real-time candlestick data from exchanges.
+// CandleService streams real-time aggregated candlestick data.
 type CandleServiceClient interface {
-	// Subscribe opens a server-side streaming RPC that pushes candles
-	// as they arrive from the requested exchange/symbol/interval.
+	// Subscribe opens a server-side streaming RPC that pushes aggregated candles
+	// for the requested symbol/interval across all connected exchanges.
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Candle], error)
 }
 
@@ -64,10 +64,10 @@ type CandleService_SubscribeClient = grpc.ServerStreamingClient[Candle]
 // All implementations must embed UnimplementedCandleServiceServer
 // for forward compatibility.
 //
-// CandleService streams real-time candlestick data from exchanges.
+// CandleService streams real-time aggregated candlestick data.
 type CandleServiceServer interface {
-	// Subscribe opens a server-side streaming RPC that pushes candles
-	// as they arrive from the requested exchange/symbol/interval.
+	// Subscribe opens a server-side streaming RPC that pushes aggregated candles
+	// for the requested symbol/interval across all connected exchanges.
 	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[Candle]) error
 	mustEmbedUnimplementedCandleServiceServer()
 }

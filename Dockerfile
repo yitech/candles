@@ -18,9 +18,11 @@ WORKDIR /app
 COPY . .
 
 # Generate gRPC code then build binaries
-RUN protoc \
-      --go_out=proto --go_opt=paths=source_relative \
-      --go-grpc_out=proto --go-grpc_opt=paths=source_relative \
+RUN mkdir -p model/protobuf && \
+    protoc \
+      --proto_path=proto \
+      --go_out=model/protobuf --go_opt=paths=source_relative \
+      --go-grpc_out=model/protobuf --go-grpc_opt=paths=source_relative \
       proto/candle.proto && \
     go mod tidy && \
     go build -o /bin/srv    ./cmd/srv && \

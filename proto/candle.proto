@@ -4,7 +4,9 @@ package candle;
 
 option go_package = "github.com/yitech/candles/model/protobuf";
 
-// Candle represents a single OHLCV candlestick.
+// Candle represents a single aggregated OHLCV candlestick.
+// The exchange field is "aggregated" for server-side merged candles,
+// or the exchange name when emitted by an individual adapter.
 message Candle {
   string exchange   = 1;
   string symbol     = 2;
@@ -19,16 +21,16 @@ message Candle {
   bool   is_closed  = 11;
 }
 
-// SubscribeRequest specifies which market to stream candles from.
+// SubscribeRequest specifies which market to stream aggregated candles from.
+// The server fans out to all configured exchanges and merges their updates.
 message SubscribeRequest {
-  string exchange = 1;
-  string symbol   = 2;
-  string interval = 3;
+  string symbol   = 1;
+  string interval = 2;
 }
 
-// CandleService streams real-time candlestick data from exchanges.
+// CandleService streams real-time aggregated candlestick data.
 service CandleService {
-  // Subscribe opens a server-side streaming RPC that pushes candles
-  // as they arrive from the requested exchange/symbol/interval.
+  // Subscribe opens a server-side streaming RPC that pushes aggregated candles
+  // for the requested symbol/interval across all connected exchanges.
   rpc Subscribe(SubscribeRequest) returns (stream Candle);
 }

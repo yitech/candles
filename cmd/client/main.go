@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -16,9 +17,9 @@ import (
 
 func main() {
 	addr     := getEnv("SERVER_ADDR", "localhost:50051")
-	exchange := getEnv("EXCHANGE",    "binance")
 	symbol   := getEnv("SYMBOL",      "BTCUSDT")
 	interval := getEnv("INTERVAL",    "1m")
+	nKline   := getEnvInt("N_KLINE",  48)
 
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -28,44 +29,57 @@ func main() {
 
 	client := pb.NewCandleServiceClient(conn)
 
-	for {
-		if err := subscribe(client, exchange, symbol, interval); err != nil {
-			log.Printf("subscription error: %v — retrying in 3s", err)
+	ch := make(chan *pb.Candle, 128)
+	go func() {
+		for {
+			if err := streamCandles(client, symbol, interval, ch); err != nil {
+				log.Printf("stream error: %v — retrying in 3s", err)
+			}
 			time.Sleep(3 * time.Second)
 		}
+	}()
+
+	p := tea.NewProgram(
+		newModel(symbol, interval, nKline, ch),
+		tea.WithAltScreen(),
+	)
+	if _, err := p.Run(); err != nil {
+		log.Fatalf("tui error: %v", err)
 	}
 }
 
-func subscribe(client pb.CandleServiceClient, exchange, symbol, interval string) error {
+func streamCandles(client pb.CandleServiceClient, symbol, interval string, ch chan<- *pb.Candle) error {
 	stream, err := client.Subscribe(context.Background(), &pb.SubscribeRequest{
-		Exchange: exchange,
 		Symbol:   symbol,
 		Interval: interval,
 	})
 	if err != nil {
-		return fmt.Errorf("subscribe: %w", err)
+		return err
 	}
-
-	log.Printf("connected — exchange=%s symbol=%s interval=%s", exchange, symbol, interval)
-
 	for {
-		candle, err := stream.Recv()
+		c, err := stream.Recv()
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("recv: %w", err)
+			return err
 		}
-		log.Printf("[%s/%s/%s] O=%-10s H=%-10s L=%-10s C=%-10s V=%s closed=%v",
-			candle.Exchange, candle.Symbol, candle.Interval,
-			candle.Open, candle.High, candle.Low, candle.Close,
-			candle.Volume, candle.IsClosed)
+		ch <- c
 	}
 }
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return fallback
 }
