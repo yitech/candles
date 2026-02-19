@@ -1,0 +1,55 @@
+services:
+
+  srv:
+    build:
+      context: .
+      target: final
+    command: ["/bin/srv"]
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
+  # Client 1 — Binance BTCUSDT 1m
+  client-binance:
+    build:
+      context: .
+      target: final
+    command: ["/bin/client"]
+    environment:
+      SERVER_ADDR: srv:50051
+      EXCHANGE:    binance
+      SYMBOL:      BTCUSDT
+      INTERVAL:    1m
+    depends_on:
+      - srv
+    restart: on-failure
+
+  # Client 2 — Bybit ETHUSDT 1m
+  client-bybit:
+    build:
+      context: .
+      target: final
+    command: ["/bin/client"]
+    environment:
+      SERVER_ADDR: srv:50051
+      EXCHANGE:    bybit
+      SYMBOL:      ETHUSDT
+      INTERVAL:    1m
+    depends_on:
+      - srv
+    restart: on-failure
+
+  # Client 3 — OKX SOLUSDT 1m
+  client-okx:
+    build:
+      context: .
+      target: final
+    command: ["/bin/client"]
+    environment:
+      SERVER_ADDR: srv:50051
+      EXCHANGE:    okx
+      SYMBOL:      SOLUSDT
+      INTERVAL:    1m
+    depends_on:
+      - srv
+    restart: on-failure
