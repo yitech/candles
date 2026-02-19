@@ -2,7 +2,6 @@ package okx
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -11,30 +10,36 @@ import (
 )
 
 // Adapter is the OKX exchange adapter.
-// TODO: implement WebSocket subscription (wss://ws.okx.com:8443/ws/v5/public)
 type Adapter struct {
 	httpClient *http.Client
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 func New() *Adapter {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Adapter{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 
-func (a *Adapter) Subscribe(symbol, interval string, handler adapter.CandleHandler) (adapter.Token, error) {
-	return nil, fmt.Errorf("okx: Subscribe not implemented")
-}
-
-// Backfill fetches historical klines via the OKX REST API for
-// instID/bar in the range [start, end].
-//
+// Subscribe opens a WebSocket candle stream for instID/bar.
+// The returned Token cancels this specific subscription.
 // Note: OKX uses hyphenated instrument IDs (e.g. "BTC-USDT") and
 // suffixed bar notation (e.g. "1m", "4H", "1D").
-func (a *Adapter) Backfill(symbol, interval string, start, end time.Time) ([]*candle.Candle, error) {
-	return fetchKlines(context.Background(), a.httpClient, symbol, interval, start.UnixMilli(), end.UnixMilli())
+func (a *Adapter) Subscribe(symbol, interval string, handler adapter.CandleHandler) (adapter.Token, error) {
+	return subscribeKline(a.ctx, symbol, interval, handler)
 }
 
+// Backfill fetches historical klines via the OKX REST API.
+func (a *Adapter) Backfill(symbol, interval string, start, end time.Time) ([]*candle.Candle, error) {
+	return fetchKlines(a.ctx, a.httpClient, symbol, interval, start.UnixMilli(), end.UnixMilli())
+}
+
+// Close cancels all active subscriptions and releases resources.
 func (a *Adapter) Close() error {
+	a.cancel()
 	return nil
 }
